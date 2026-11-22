@@ -361,3 +361,17 @@ MigrationBackup/
 
 # Fody - auto-generated XML schema
 FodyWeavers.xsd
+# ---------------------------------------------------------------------------
+# Project-specific
+# ---------------------------------------------------------------------------
+# Old (pre-.NET 10) build output location, previously committed by mistake
+SiufpGrades/net*/
+# Selenium driver binaries must never be committed (Selenium Manager fetches them)
+chromedriver*
+# Scraped grade data is personal: never commit it
+csv/
+data/
+*.csv
+# Local secrets
+.env
+.env.*

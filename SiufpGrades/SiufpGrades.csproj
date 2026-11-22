@@ -2,22 +2,16 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
-    <Platforms>x64</Platforms>
-    <StartupObject></StartupObject>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutputPath>.\</OutputPath>
+    <RootNamespace>SiufpGrades</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Selenium.WebDriver" Version="3.141.0" />
-    <PackageReference Include="Selenium.WebDriver.ChromeDriver" Version="89.0.4389.2300" />
+    <!-- Selenium Manager (included) resolves chromedriver at runtime; no bundled driver needed. -->
+    <PackageReference Include="Selenium.WebDriver" Version="4.53.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="csv\" />
+    <ProjectReference Include="..\SiufpGrades.Core\SiufpGrades.Core.csproj" />
   </ItemGroup>
 
 </Project>
