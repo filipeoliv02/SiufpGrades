@@ -25,7 +25,9 @@ and it does the checking for you.
 | Atomic file replace | Write to a temp file, then rename over the target. | `GradeStore.Save` writes `*.tmp` and `File.Move(..., overwrite: true)`, so a crash never leaves a truncated CSV that would cause false "new grade" alerts on the next run. | [GradeStore.cs](SiufpGrades.Core/GradeStore.cs) |
 | Path-traversal guard | Accept only bare file names. | `PathFor` rejects any name where `Path.GetFileName(name) != name`, so storage cannot escape the data directory. | [GradeStore.cs](SiufpGrades.Core/GradeStore.cs) |
 | Selenium explicit waits | Poll a condition until true or timeout, instead of fixed sleeps. | A single `WebDriverWait` (ignoring `NoSuchElement`/`StaleElementReference`) waits for the login field, for `document.readyState == "complete"`, and for navigation away from the login page, which doubles as login-failure detection. | [PortalClient.cs](SiufpGrades/PortalClient.cs) |
-| Separation of I/O from logic (ports and adapters, lightweight) | Keep the testable core free of browser and console dependencies. | `SiufpGrades.Core` has no Selenium reference: the scraper returns raw cell text and `GradeTableParser` maps it to records. Credential lookup takes `getEnv` and prompt delegates, so it is unit-tested without a real environment or terminal. | [GradeTableParser.cs](SiufpGrades.Core/GradeTableParser.cs), [Credentials.cs](SiufpGrades.Core/Credentials.cs) |
+| Separation of I/O from logic (ports and adapters, lightweight) | Keep the testable core free of browser and console dependencies. | `SiufpGrades.Core` has no Selenium reference: the scraper returns raw cell text and `GradeTableParser` maps it to records. Credential lookup takes `getEnv` and prompt delegates, so it is unit-tested without a real environment or terminal. Notification strategies are also Selenium-, email-, and portal-free. | [GradeTableParser.cs](SiufpGrades.Core/GradeTableParser.cs), [Credentials.cs](SiufpGrades.Core/Credentials.cs), [Notifications/](SiufpGrades.Core/Notifications/) |
+| Retry with exponential backoff and jitter | Bound repeated transient portal failures instead of failing or hammering the service on the first network/driver error. | The CLI retries one complete scrape up to three times, with capped exponential equal jitter and injectable delay/random functions. Login and grade-format errors remain fatal. | [RetryPolicy.cs](SiufpGrades.Core/Resilience/RetryPolicy.cs), [Program.cs](SiufpGrades/Program.cs) |
+| Strategy / composite notification | Dispatch user notifications through small interchangeable implementations. | `INotifier` + `GradeNotification` is the core contract; the app provides a console adapter and a composite that supports multiple strategies. Tests use fake notifiers; no live email or portal call is involved. | [Notifications/](SiufpGrades.Core/Notifications/), [ConsoleNotifier.cs](SiufpGrades/ConsoleNotifier.cs) |
 | Secret hygiene | Keep passwords out of argv, logs and `ToString()`. | Credentials come only from environment variables or a masked prompt; positional arguments are rejected without echoing them; `Credentials.ToString()` redacts the password. | [Credentials.cs](SiufpGrades.Core/Credentials.cs), [CommandLineOptions.cs](SiufpGrades.Core/CommandLineOptions.cs), [ConsolePrompt.cs](SiufpGrades/ConsolePrompt.cs) |
 | Masked terminal input | Read keys with echo suppressed. | `ReadSecret` uses `Console.ReadKey(intercept: true)`, prints `*` per character and handles Backspace/Escape. | [ConsolePrompt.cs](SiufpGrades/ConsolePrompt.cs) |
 | Deterministic resource cleanup | `IDisposable` + `using` with `try`/`finally`. | `PortalClient.Dispose` always calls `Quit()` so no orphan Chrome/chromedriver processes are left, even on errors. | [PortalClient.cs](SiufpGrades/PortalClient.cs) |
@@ -52,8 +54,10 @@ Final grades: nothing new.
 | `2`       | New or changed grades found                         |
 | `1`       | Error (bad arguments, login failure, browser error) |
 
-You can use the exit code to trigger your own notification, for example
-`SiufpGrades; [ $? -eq 2 ] && notify-send "New grades!"`.
+The built-in strategy writes grade-change reports to the console. Notification dispatch is implemented
+through `INotifier` and `CompositeNotifier` in `SiufpGrades.Core`, so applications and tests can add or
+fake other strategies without live portal, email, or OS-service calls. The exit code can also trigger
+an external notification, for example `SiufpGrades; [ $? -eq 2 ] && notify-send "New grades!"`.
 
 ## Requirements
 
